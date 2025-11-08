@@ -37,11 +37,40 @@ class Program
 }
 
 
-----------------
-
-### Q2. Please Introduce yourself?
+----------------------------
+### Q2. Before the Task Parallel Library (TPL), how did we handle multithreading or parallel work in .NET?
 **Answer:**  
+Before TPL, developers had to manually create and manage threads using the Thread class or the ThreadPool.
+**Example:**
+```csharp
+using System;
+using System.Threading;
 
+class Program
+{
+    static void Main()
+    {
+        Thread t1 = new Thread(() => DoWork("Thread 1"));
+        Thread t2 = new Thread(() => DoWork("Thread 2"));
+
+        t1.Start();
+        t2.Start();
+
+        t1.Join(); // Wait for t1 to finish
+        t2.Join(); // Wait for t2 to finish
+
+        Console.WriteLine("All threads completed.");
+    }
+
+    static void DoWork(string name)
+    {
+        Console.WriteLine($"{name} started...");
+        Thread.Sleep(1000); // Simulate work
+        Console.WriteLine($"{name} completed.");
+    }
+}
+
+---------------------------
 ### Q2. Please Introduce yourself?
 **Answer:**  
 
