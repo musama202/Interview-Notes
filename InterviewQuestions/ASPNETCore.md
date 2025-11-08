@@ -1,9 +1,16 @@
-# C#  Questions
+# C# Interview Questions
+
+---
 
 ### Q1. What is TPL (Task Parallel Library) in C# / .NET Core?
+
 **Answer:**  
-The Task Parallel Library (TPL) in .NET Core helps execute multiple operations concurrently using tasks instead of manual threads. It automatically handles thread management, scheduling, and provides better performance for CPU and I/O-bound operations. It also integrates seamlessly with async/await for asynchronous programming.
-**Example:**  
+The **Task Parallel Library (TPL)** in .NET Core is used to execute multiple operations concurrently using **tasks** instead of manually managing threads.  
+It simplifies parallel programming by automatically handling **thread management**, **scheduling**, and **load balancing**, resulting in better performance for **CPU-bound** and **I/O-bound** operations.  
+It also integrates seamlessly with **async/await** for asynchronous programming.
+
+**Example:**
+```csharp
 using System;
 using System.Threading.Tasks;
 
