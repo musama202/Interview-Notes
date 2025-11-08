@@ -68,14 +68,22 @@ class Program
         Console.WriteLine($"{name} completed.");
     }
 }
+```
+---------------------------
+### Q2. How TPL is different beteen async/await?
+
+**Answer:**  
+async/await is for asynchronous programming, mainly for I/O-bound tasks, allowing threads to be freed while waiting for operations to complete.
+TPL is for parallel programming, mainly CPU-bound tasks, where multiple operations run concurrently on multiple threads.
+While TPL focuses on parallelism, async/await focuses on asynchronous non-blocking execution.
 
 ---------------------------
-### Q2. Please Introduce yourself?
+### Q2. What is different between I/O bound and Cpu bound?
 **Answer:**  
+A CPU-bound task is limited by the CPU’s processing power and spends most of its time computing, while an I/O-bound task spends most of its time waiting for external operations like disk or network access.
+CPU-bound tasks benefit from parallel execution to utilize multiple cores, whereas I/O-bound tasks benefit from asynchronous programming (async/await) to free threads while waiting, improving scalability.”
 
-### Q2. Please Introduce yourself?
-**Answer:**  
-
+---------------------------
 ### Q2. Please Introduce yourself?
 **Answer:**  
 
