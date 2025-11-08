@@ -35,8 +35,7 @@ class Program
         Console.WriteLine($"{taskName} completed.");
     }
 }
-
-
+```
 ----------------------------
 ### Q2. Before the Task Parallel Library (TPL), how did we handle multithreading or parallel work in .NET?
 **Answer:**  
