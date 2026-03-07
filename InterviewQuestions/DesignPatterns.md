@@ -14,7 +14,7 @@ The **Factory Design Pattern** is a **creational design pattern** that provides 
 - Supports the **Open/Closed Principle**
 - Makes the system easier to **extend and maintain**
 
-### Factory vs Dependency Injection vs Keyed Services
+**Factory vs Dependency Injection vs Keyed Services**
 
 | Concept | Purpose |
 |------|------|
