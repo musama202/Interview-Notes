@@ -270,13 +270,11 @@ class Program
 **Answer:**  
 The **diamond problem** occurs in multiple inheritance when a class inherits from two classes that both inherit from a common base class, creating **ambiguity**.  
 
-Diagram:
   A
  / \
 B   C
  \ /
   D
-
   
 **Explanation:**  
 - Class **B** and **C** both inherit from **A**.  
@@ -288,8 +286,6 @@ B   C
 - C# **supports multiple interface inheritance**, and a **similar ambiguity** can occur if:  
   - Multiple interfaces have the **same method signature**.  
   - A class implements those interfaces and doesn’t clearly resolve the method.  
-
----
 
 **C# Example Using Interfaces:**  
 
@@ -329,5 +325,184 @@ class Program
         D obj = new D();
         obj.Show(); // Output: Implementation of Show() in D
     }
-}```
+}
+```
+
+---
+
+### Q6. What are the four pillars of Object-Oriented Programming (OOP)? Can you explain each with an example?
+
+**Answer:**  
+The four pillars of Object-Oriented Programming (OOP) are **Encapsulation**, **Abstraction**, **Inheritance**, and **Polymorphism**. Each pillar plays a key role in designing clean, reusable, and maintainable code.
+
+---
+
+#### 1. 🔒 Encapsulation
+**Encapsulation** means **hiding the internal data** of a class and only exposing it through public methods (getters/setters). It protects the data from unauthorized access.
+
+**Example:**
+```csharp
+using System;
+
+class BankAccount
+{
+    private double balance; // Hidden from outside
+
+    public void Deposit(double amount)
+    {
+        if (amount > 0)
+            balance += amount;
+    }
+
+    public double GetBalance()
+    {
+        return balance;
+    }
+}
+
+class Program
+{
+    static void Main()
+    {
+        BankAccount account = new BankAccount();
+        account.Deposit(500);
+        Console.WriteLine(account.GetBalance()); // Output: 500
+    }
+}
+```
+
+---
+
+#### 2. 🎭 Abstraction
+**Abstraction** means **hiding complex implementation details** and showing only the essential features. It is achieved using **abstract classes** or **interfaces**.
+
+**Example:**
+```csharp
+using System;
+
+abstract class Shape
+{
+    public abstract double CalculateArea(); // Only declaration, no implementation
+}
+
+class Circle : Shape
+{
+    private double radius;
+
+    public Circle(double radius)
+    {
+        this.radius = radius;
+    }
+
+    public override double CalculateArea()
+    {
+        return Math.PI * radius * radius;
+    }
+}
+
+class Program
+{
+    static void Main()
+    {
+        Shape shape = new Circle(5);
+        Console.WriteLine(shape.CalculateArea()); // Output: 78.539...
+    }
+}
+```
+
+---
+
+#### 3. 🧬 Inheritance
+**Inheritance** allows a class (**child**) to **acquire the properties and methods** of another class (**parent**), promoting code reusability.
+
+**Example:**
+```csharp
+using System;
+
+class Animal
+{
+    public void Eat()
+    {
+        Console.WriteLine("Animal is eating...");
+    }
+}
+
+class Dog : Animal // Dog inherits Animal
+{
+    public void Bark()
+    {
+        Console.WriteLine("Dog is barking...");
+    }
+}
+
+class Program
+{
+    static void Main()
+    {
+        Dog dog = new Dog();
+        dog.Eat();  // Inherited from Animal → Animal is eating...
+        dog.Bark(); // Dog's own method → Dog is barking...
+    }
+}
+```
+
+---
+
+#### 4. 🔄 Polymorphism
+**Polymorphism** means **one method behaves differently** based on the object that calls it. It can be achieved via **method overriding** (runtime) or **method overloading** (compile-time).
+
+**Example:**
+```csharp
+using System;
+
+class Animal
+{
+    public virtual void MakeSound()
+    {
+        Console.WriteLine("Some generic animal sound...");
+    }
+}
+
+class Cat : Animal
+{
+    public override void MakeSound()
+    {
+        Console.WriteLine("Cat says: Meow!");
+    }
+}
+
+class Dog : Animal
+{
+    public override void MakeSound()
+    {
+        Console.WriteLine("Dog says: Woof!");
+    }
+}
+
+class Program
+{
+    static void Main()
+    {
+        Animal myAnimal;
+
+        myAnimal = new Cat();
+        myAnimal.MakeSound(); // Output: Cat says: Meow!
+
+        myAnimal = new Dog();
+        myAnimal.MakeSound(); // Output: Dog says: Woof!
+    }
+}
+```
+
+---
+
+### 📝 Summary Table
+
+| Pillar          | Key Concept                          | Achieved By                        |
+|-----------------|--------------------------------------|------------------------------------|
+| Encapsulation   | Hide data, expose via methods        | Private fields + public methods    |
+| Abstraction     | Hide complexity, show essentials     | Abstract classes / Interfaces      |
+| Inheritance     | Reuse parent class features          | `: ParentClass` syntax             |
+| Polymorphism    | Same method, different behavior      | Method overriding / overloading    |
+
 ---
