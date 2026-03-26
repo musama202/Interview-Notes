@@ -506,3 +506,393 @@ class Program
 | Polymorphism    | Same method, different behavior      | Method overriding / overloading    |
 
 ---
+
+### Q7. What is the difference between Association, Aggregation, and Composition in C#? Can you provide real-world examples?
+
+**Answer:**  
+These three concepts define **how classes relate to each other** in Object-Oriented Programming. They differ in terms of **ownership**, **dependency**, and **lifecycle**.
+
+---
+
+#### 1. 🔗 Association
+**Association** is a relationship where **two classes are related but independent** of each other. Neither class owns the other, and both can exist independently.
+
+> **Real-World Example:** A **Teacher** and a **Student** — A teacher can have multiple students, and a student can have multiple teachers. Both exist independently.
+
+**Example:**
+```csharp
+using System;
+
+class Teacher
+{
+    public string Name { get; set; }
+
+    public Teacher(string name)
+    {
+        Name = name;
+    }
+
+    public void Teach()
+    {
+        Console.WriteLine($"{Name} is teaching...");
+    }
+}
+
+class Student
+{
+    public string Name { get; set; }
+
+    public Student(string name)
+    {
+        Name = name;
+    }
+
+    public void LearnFrom(Teacher teacher)
+    {
+        Console.WriteLine($"{Name} is learning from {teacher.Name}");
+    }
+}
+
+class Program
+{
+    static void Main()
+    {
+        Teacher teacher = new Teacher("Sir Ahmed");
+        Student student = new Student("Ali");
+
+        student.LearnFrom(teacher);
+        // Output: Ali is learning from Sir Ahmed
+    }
+}
+```
+
+---
+
+#### 2. 🧩 Aggregation *(Has-A | Weak Ownership)*
+**Aggregation** is a **"Has-A"** relationship where one class **contains a reference** to another, but the contained object **can exist independently** even if the parent is destroyed.
+
+> **Real-World Example:** A **Department** and a **Professor** — A department has professors, but if the department is closed, the professors still exist.
+
+**Example:**
+```csharp
+using System;
+using System.Collections.Generic;
+
+class Professor
+{
+    public string Name { get; set; }
+
+    public Professor(string name)
+    {
+        Name = name;
+    }
+
+    public void Display()
+    {
+        Console.WriteLine($"Professor: {Name}");
+    }
+}
+
+class Department
+{
+    public string DepartmentName { get; set; }
+    private List<Professor> professors; // Aggregation (Professor exists independently)
+
+    public Department(string name, List<Professor> professors)
+    {
+        DepartmentName = name;
+        this.professors = professors;
+    }
+
+    public void ShowProfessors()
+    {
+        Console.WriteLine($"\nDepartment: {DepartmentName}");
+        foreach (var prof in professors)
+            prof.Display();
+    }
+}
+
+class Program
+{
+    static void Main()
+    {
+        // Professors exist independently
+        List<Professor> profs = new List<Professor>
+        {
+            new Professor("Dr. Khan"),
+            new Professor("Dr. Aisha")
+        };
+
+        Department dept = new Department("Computer Science", profs);
+        dept.ShowProfessors();
+        // Output:
+        // Department: Computer Science
+        // Professor: Dr. Khan
+        // Professor: Dr. Aisha
+    }
+}
+```
+
+---
+
+#### 3. 🏗️ Composition *(Has-A | Strong Ownership)*
+**Composition** is a **strong "Has-A"** relationship where one class **owns** another, and the **child object cannot exist without the parent**. If the parent is destroyed, the child is also destroyed.
+
+> **Real-World Example:** A **House** and its **Rooms** — Rooms cannot exist without the house. If the house is demolished, the rooms are gone too.
+
+**Example:**
+```csharp
+using System;
+using System.Collections.Generic;
+
+class Room
+{
+    public string RoomName { get; set; }
+
+    public Room(string name)
+    {
+        RoomName = name;
+    }
+
+    public void Display()
+    {
+        Console.WriteLine($"  Room: {RoomName}");
+    }
+}
+
+class House
+{
+    public string Address { get; set; }
+    private List<Room> rooms; // Composition (Rooms created inside House)
+
+    public House(string address)
+    {
+        Address = address;
+        // Rooms are created BY the House (strong ownership)
+        rooms = new List<Room>
+        {
+            new Room("Living Room"),
+            new Room("Bedroom"),
+            new Room("Kitchen")
+        };
+    }
+
+    public void ShowRooms()
+    {
+        Console.WriteLine($"House at: {Address}");
+        foreach (var room in rooms)
+            room.Display();
+    }
+}
+
+class Program
+{
+    static void Main()
+    {
+        House house = new House("123 Main Street");
+        house.ShowRooms();
+        // Output:
+        // House at: 123 Main Street
+        //   Room: Living Room
+        //   Room: Bedroom
+        //   Room: Kitchen
+    }
+}
+```
+
+---
+
+
+---
+
+### 🧠 Quick Memory Tip
+
+> - **Association** → *"I know you"* (no ownership)  
+> - **Aggregation** → *"I have you, but you can live without me"* (weak ownership)  
+> - **Composition** → *"You are part of me, you cannot exist without me"* (strong ownership)
+
+---
+
+### Q8. What is a partial class in C#, and why would you use it?
+
+**Answer:**  
+A **partial class** in C# allows you to **split the definition of a class across multiple files**. All parts are combined into a single class at **compile time**. It is defined using the `partial` keyword.
+
+---
+
+#### 🔑 Syntax
+```csharp
+// File 1
+partial class MyClass
+{
+    // Part 1 of the class
+}
+
+// File 2
+partial class MyClass
+{
+    // Part 2 of the class
+}
+```
+
+> At compile time, both files are **merged into one single class** automatically.
+
+---
+
+### Q9. What is a Static Class, Static Method, and Static Property in C#?
+
+**Answer:**  
+The `static` keyword means the member **belongs to the class itself**, not to any object. You **do not need to create an object** to access it.
+
+---
+
+#### 1. 🏛️ Static Class
+- Cannot be **instantiated** or **inherited**
+- Contains **only static members**
+- Used for **utility/helper** methods
+```csharp
+static class MathHelper
+{
+    public static double Square(double n) => n * n;
+}
+
+// Usage — no object needed
+Console.WriteLine(MathHelper.Square(4)); // Output: 16
+```
+
+---
+
+#### 2. ⚙️ Static Method
+- Called using **class name**, not an object
+- **Cannot access** instance members directly
+```csharp
+class Converter
+{
+    public static double CelsiusToFahrenheit(double c) => (c * 9 / 5) + 32;
+}
+
+// Usage
+Console.WriteLine(Converter.CelsiusToFahrenheit(100)); // Output: 212
+```
+
+---
+
+#### 3. 📦 Static Property
+- **Shared across all instances** of the class
+- Retains value throughout the application's lifetime
+```csharp
+class Student
+{
+    public static int TotalStudents { get; private set; } = 0;
+    public string Name { get; set; }
+
+    public Student(string name) { Name = name; TotalStudents++; }
+}
+
+// Usage
+Student s1 = new Student("Ali");
+Student s2 = new Student("Sara");
+Console.WriteLine(Student.TotalStudents); // Output: 2
+```
+
+---
+
+### 📝 Summary Table
+
+| Feature          | Static Class       | Static Method         | Static Property          |
+|------------------|--------------------|-----------------------|--------------------------|
+| **Belongs To**   | Class              | Class                 | Class                    |
+| **Need Object?** | ❌ No             | ❌ No                 | ❌ No                    |
+| **Common Use**   | Helper/Utility     | Conversions, Math     | Counters, Global Config  |
+| **Example**      | `Math`, `Console`  | `Math.Sqrt()`         | `Student.TotalStudents`  |
+
+---
+
+### 🧠 Memory Tip
+> **Static** = belongs to the **class**, not the **object**.  
+> Like a **shared whiteboard** in a classroom — everyone reads it, but it belongs to the **room**, not any single student.
+
+---
+### Q10. What is a sealed class in C#? When and why would you use one?
+
+**Answer:**  
+A **sealed class** is a class that **cannot be inherited**. Once a class is marked `sealed`, no other class can derive from it.
+
+---
+
+#### 🔑 Syntax
+```csharp
+sealed class MyClass
+{
+    // Cannot be inherited
+}
+```
+
+---
+
+#### 📁 Example
+```csharp
+using System;
+
+sealed class PaymentGateway
+{
+    public void ProcessPayment(double amount)
+    {
+        Console.WriteLine($"Payment of {amount:C} processed securely.");
+    }
+}
+
+// ❌ This will cause a COMPILE ERROR
+// class FakeGateway : PaymentGateway { }  // ERROR: cannot inherit from sealed class
+
+class Program
+{
+    static void Main()
+    {
+        PaymentGateway gateway = new PaymentGateway();
+        gateway.ProcessPayment(5000);
+        // Output: Payment of $5,000.00 processed securely.
+    }
+}
+```
+
+---
+
+#### 🔒 Sealed Method (Bonus)
+You can also seal a **single method** in a derived class to stop further overriding.
+```csharp
+class Animal
+{
+    public virtual void Speak() => Console.WriteLine("Animal speaks");
+}
+
+class Dog : Animal
+{
+    public sealed override void Speak() => Console.WriteLine("Dog barks");
+}
+
+// ❌ Cannot override Speak() anymore
+// class Puppy : Dog
+// {
+//     public override void Speak() { } // ERROR!
+// }
+```
+
+---
+
+### 📝 When & Why to Use Sealed Class?
+
+| Reason               | Explanation                                              |
+|----------------------|----------------------------------------------------------|
+| 🔐 **Security**      | Prevent others from modifying critical class behavior    |
+| ⚡ **Performance**   | Compiler optimizes sealed classes (no virtual dispatch)  |
+| 🎯 **Design Intent** | Signals this class is **complete** and not meant to be extended |
+| 🏦 **Example Use**   | Payment systems, encryption classes, authentication      |
+
+---
+
+### 🧠 Memory Tip
+> **Sealed class** = a **dead-end road** 🚧  
+> You can use it, but you **cannot extend it further**.
+
+---
