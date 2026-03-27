@@ -896,3 +896,529 @@ class Dog : Animal
 > You can use it, but you **cannot extend it further**.
 
 ---
+### Q11. What are extension methods in C#?
+
+**Answer:**  
+Extension methods let you **add new methods to an existing class** without modifying or inheriting it. Defined in a **static class** using the `this` keyword.
+
+---
+
+#### 🔑 Syntax
+```csharp
+static class MyExtensions
+{
+    public static ReturnType MethodName(this TargetType obj) { }
+}
+```
+
+---
+
+#### 📁 Example
+```csharp
+using System;
+
+static class StringExtensions
+{
+    public static bool IsValidEmail(this string email) 
+        => email.Contains("@") && email.Contains(".");
+
+    public static string Reverse(this string text)
+    {
+        char[] chars = text.ToCharArray();
+        Array.Reverse(chars);
+        return new string(chars);
+    }
+}
+
+class Program
+{
+    static void Main()
+    {
+        Console.WriteLine("ali@gmail.com".IsValidEmail()); // True
+        Console.WriteLine("Hello".Reverse());              // olleH
+    }
+}
+```
+
+---
+
+### ⚠️ Key Rules
+
+| Rule                              | Detail                              |
+|-----------------------------------|-------------------------------------|
+| ✅ Must be in a **static class**  | `static class MyExtensions`         |
+| ✅ Method must be **static**      | `public static void Method(...)`    |
+| ✅ First param needs **`this`**   | `this string s`                     |
+| ❌ No private member access       | Cannot access private fields        |
+| ❌ Cannot override existing methods | Only adds new methods             |
+
+---
+
+### 📝 When to Use?
+
+- Extend classes you **don't own** (`string`, `int`, `List`)
+- **LINQ** is built entirely on extension methods (`.Where()`, `.Select()`)
+- Cleaner, reusable helper methods across the project
+
+---
+
+### 🧠 Memory Tip
+> Like adding a **new pocket** 👖 to a jacket you didn't make —  
+> enhance it **without changing the original**.
+
+---
+### Q12. How do different access modifiers behave in C#?
+
+**Answer:**  
+Access modifiers control **who can access** a class, method, or property.
+
+---
+
+#### 📝 Quick Reference Table
+
+| Modifier              | Same Class | Same Assembly | Subclass | Everywhere |
+|-----------------------|------------|---------------|----------|------------|
+| `public`              | ✅        | ✅            | ✅      | ✅         |
+| `private`             | ✅        | ❌            | ❌      | ❌         |
+| `protected`           | ✅        | ❌            | ✅      | ❌         |
+| `internal`            | ✅        | ✅            | ❌      | ❌         |
+| `protected internal`  | ✅        | ✅            | ✅      | ❌         |
+| `private protected`   | ✅        | ❌            | ✅*     | ❌         |
+
+> *`private protected` — subclass access only **within the same assembly**
+
+---
+
+#### 📁 Example
+```csharp
+class Person
+{
+    public    string Name     = "Ali";      // Accessible everywhere
+    private   int    age      = 25;         // Only inside this class
+    protected string Country  = "Pakistan"; // This class + subclasses
+    internal  string City     = "Karachi";  // Same project only
+}
+
+class Employee : Person
+{
+    public void Show()
+    {
+        Console.WriteLine(Name);     // ✅ public
+        Console.WriteLine(Country);  // ✅ protected
+        // Console.WriteLine(age);   // ❌ private — ERROR
+    }
+}
+```
+
+---
+
+### 🧠 Memory Tip
+
+> - `public`    → **Everyone** can see  
+> - `private`   → **Only me** can see  
+> - `protected` → **Me + my children** can see  
+> - `internal`  → **My team** (same project) can see
+
+---
+
+### Q13. In multi-level inheritance, how are constructors and destructors called?
+
+**Answer:**  
+In multi-level inheritance, constructors are called **top to bottom** (Parent → Child) and destructors are called **bottom to top** (Child → Parent).
+
+---
+
+#### 📁 Example
+```csharp
+using System;
+
+class GrandParent
+{
+    public GrandParent() => Console.WriteLine("GrandParent Constructor");
+    ~GrandParent()       => Console.WriteLine("GrandParent Destructor");
+}
+
+class Parent : GrandParent
+{
+    public Parent() => Console.WriteLine("Parent Constructor");
+    ~Parent()       => Console.WriteLine("Parent Destructor");
+}
+
+class Child : Parent
+{
+    public Child() => Console.WriteLine("Child Constructor");
+    ~Child()       => Console.WriteLine("Child Destructor");
+}
+
+class Program
+{
+    static void Main()
+    {
+        Child obj = new Child();
+    }
+}
+
+// Output:
+// GrandParent Constructor  ← Top to Bottom
+// Parent Constructor
+// Child Constructor
+// Child Destructor         ← Bottom to Top
+// Parent Destructor
+// GrandParent Destructor
+```
+
+---
+
+### 🧠 Memory Tip
+> **Constructor** → Parent gives birth first 👶 (Top → Bottom)  
+> **Destructor**  → Child leaves first 🚪 (Bottom → Top)
+
+---
+### Q14. What is a Thread in C#?
+
+**Answer:**  
+A **Thread** is the **smallest unit of execution** in a program. By default, every C# program runs on a **single main thread**. We can create additional threads to run tasks **simultaneously**.
+
+---
+
+#### 📁 Basic Example
+```csharp
+using System;
+using System.Threading;
+
+class Program
+{
+    static void PrintNumbers()
+    {
+        for (int i = 1; i <= 5; i++)
+        {
+            Console.WriteLine($"Thread: {i}");
+            Thread.Sleep(500); // Pause 500ms
+        }
+    }
+
+    static void Main()
+    {
+        Thread t = new Thread(PrintNumbers);
+        t.Start(); // Start new thread
+
+        for (int i = 1; i <= 5; i++)
+        {
+            Console.WriteLine($"Main: {i}");
+            Thread.Sleep(500);
+        }
+    }
+}
+
+// Output (runs simultaneously):
+// Main: 1
+// Thread: 1
+// Main: 2
+// Thread: 2 ...
+```
+
+---
+
+#### 📝 Thread Key Properties & Methods
+
+| Method / Property   | Purpose                                      |
+|---------------------|----------------------------------------------|
+| `t.Start()`         | Starts the thread                            |
+| `t.Join()`          | Main thread waits until this thread finishes |
+| `t.Sleep(ms)`       | Pauses thread for given milliseconds         |
+| `t.IsAlive`         | Checks if thread is still running            |
+| `t.Name`            | Set/get thread name                          |
+| `t.Priority`        | Set priority (Low, Normal, High)             |
+
+---
+
+#### 📁 Thread vs Task
+```csharp
+// Thread — manual, low level
+Thread t = new Thread(() => Console.WriteLine("Thread"));
+t.Start();
+
+// Task — modern, recommended way (uses thread pool)
+Task.Run(() => Console.WriteLine("Task"));
+```
+
+---
+
+### 📝 Types of Threads
+
+| Type                | Detail                                          |
+|---------------------|-------------------------------------------------|
+| **Foreground**      | App waits for it to finish (default)            |
+| **Background**      | App exits even if it's still running            |
+```csharp
+Thread t  = new Thread(DoWork);
+t.IsBackground = true; // Set as background thread
+t.Start();
+```
+
+---
+
+### 🧠 Memory Tip
+> A **Thread** is like a **worker** 👷 in a factory.  
+> One worker (main thread) does all tasks by default.  
+> Add more workers (threads) to do **multiple tasks at the same time**.
+
+---
+
+### Q15. What is the purpose of `async` and `await` in C#?
+
+**Answer:**  
+`async` and `await` allow you to write **asynchronous code** that runs **without blocking the main thread**. The app keeps responding while waiting for long tasks (API calls, file reads, DB queries).
+
+---
+
+#### 🔑 Syntax
+```csharp
+public async Task MethodName()
+{
+    await SomeLongRunningTask();
+}
+```
+
+> - `async`  → marks the method as asynchronous  
+> - `await`  → pauses execution **until the task completes** without blocking the thread
+
+---
+
+#### 📁 Example — Without vs With async/await
+```csharp
+using System;
+using System.Threading.Tasks;
+
+class Program
+{
+    // ❌ Synchronous — blocks the thread while waiting
+    static void GetDataSync()
+    {
+        Task.Delay(3000).Wait();          // Blocks for 3 seconds
+        Console.WriteLine("Data loaded!");
+    }
+
+    // ✅ Asynchronous — thread is free while waiting
+    static async Task GetDataAsync()
+    {
+        await Task.Delay(3000);           // Waits without blocking
+        Console.WriteLine("Data loaded!");
+    }
+
+    static async Task Main()
+    {
+        Console.WriteLine("Fetching data...");
+        await GetDataAsync();
+        Console.WriteLine("Done!");
+    }
+}
+
+// Output:
+// Fetching data...
+// (waits 3 seconds — thread is FREE)
+// Data loaded!
+// Done!
+```
+
+---
+
+#### 📁 Real-World Example — API Call
+```csharp
+using System;
+using System.Net.Http;
+using System.Threading.Tasks;
+
+class ApiService
+{
+    static async Task FetchData()
+    {
+        HttpClient client = new HttpClient();
+        string result = await client.GetStringAsync("https://api.example.com/data");
+        Console.WriteLine($"Response: {result}");
+    }
+
+    static async Task Main()
+    {
+        Console.WriteLine("App is running...");
+        await FetchData();   // Non-blocking API call
+        Console.WriteLine("App continues...");
+    }
+}
+```
+
+---
+
+### 📝 When to Use?
+
+- 🌐 **API / HTTP calls**
+- 🗄️ **Database queries**
+- 📁 **File read/write operations**
+- ⏳ Any **long-running task** that would freeze the UI
+
+---
+
+### 🧠 Memory Tip
+> `async/await` is like **ordering food** 🍕 at a restaurant.  
+> You place your order (`await`) and do other things —  
+> you are **not standing at the counter** waiting (blocking).  
+> When food is ready, you get notified and continue.
+
+---
+### Q16. What is the difference between Parallelism and Concurrency in C#?
+
+**Answer:**
+
+| | Concurrency | Parallelism |
+|--|-------------|-------------|
+| **Definition** | Multiple tasks **in progress** at the same time | Multiple tasks **executing** at the same time |
+| **Execution** | Tasks switch rapidly (take turns) | Tasks run truly simultaneously |
+| **Requires** | Single or multi-core CPU | Multi-core CPU |
+| **Best For** | I/O-bound tasks | CPU-bound tasks |
+| **Example** | `async/await`, Threads | `Parallel.For`, `Task.WhenAll` |
+
+---
+
+#### 📁 Concurrency Example — `async/await`
+```csharp
+using System;
+using System.Threading.Tasks;
+
+class Program
+{
+    static async Task FetchData(string source)
+    {
+        Console.WriteLine($"Fetching from {source}...");
+        await Task.Delay(2000);   // Simulates I/O wait
+        Console.WriteLine($"Done: {source}");
+    }
+
+    static async Task Main()
+    {
+        // Tasks START together but take turns (concurrent)
+        await Task.WhenAll(
+            FetchData("API"),
+            FetchData("Database"),
+            FetchData("Cache")
+        );
+        Console.WriteLine("All fetched!");
+    }
+}
+
+// Output:
+// Fetching from API...
+// Fetching from Database...
+// Fetching from Cache...
+// Done: API
+// Done: Database
+// Done: Cache
+// All fetched!
+```
+
+---
+
+#### 📁 Parallelism Example — `Parallel.For`
+```csharp
+using System;
+using System.Threading.Tasks;
+
+class Program
+{
+    static void Main()
+    {
+        // Tasks run TRULY at the same time on multiple CPU cores
+        Parallel.For(1, 5, i =>
+        {
+            Console.WriteLine($"Processing Task {i} on Thread {
+                              System.Threading.Thread.CurrentThread.ManagedThreadId}");
+        });
+
+        Console.WriteLine("All tasks complete!");
+    }
+}
+
+// Output (order may vary — truly parallel):
+// Processing Task 1 on Thread 3
+// Processing Task 3 on Thread 5
+// Processing Task 2 on Thread 4
+// Processing Task 4 on Thread 6
+// All tasks complete!
+```
+
+---
+
+### 🧠 Memory Tip
+> **Concurrency** = One chef 👨‍🍳 **switching** between multiple dishes  
+> **Parallelism** = Multiple chefs 👨‍🍳👨‍🍳 each cooking a **different dish at the same time**
+
+---
+
+### Q17. How does Task differ from Thread in C#?
+
+**Answer:**  
+`Thread` is **low-level** manual control. `Task` is **high-level** and uses the thread pool automatically — recommended for most scenarios.
+
+---
+
+#### 📁 Thread Example
+```csharp
+using System;
+using System.Threading;
+
+class Program
+{
+    static void Main()
+    {
+        Thread t = new Thread(() =>
+        {
+            Console.WriteLine("Thread is running...");
+            Thread.Sleep(1000);
+            Console.WriteLine("Thread done!");
+        });
+
+        t.Start();
+        t.Join(); // Wait for thread to finish
+    }
+}
+```
+
+---
+
+#### 📁 Task Example
+```csharp
+using System;
+using System.Threading.Tasks;
+
+class Program
+{
+    static async Task Main()
+    {
+        await Task.Run(() =>
+        {
+            Console.WriteLine("Task is running...");
+            Task.Delay(1000).Wait();
+            Console.WriteLine("Task done!");
+        });
+    }
+}
+```
+
+---
+
+#### 📁 Task Returning a Value
+```csharp
+static async Task Main()
+{
+    // Task<T> can return a result — Thread cannot
+    int result = await Task.Run(() => 10 * 5);
+    Console.WriteLine($"Result: {result}"); // Output: 50
+}
+```
+
+---
+
+### 🧠 Memory Tip
+> **Thread** = Hiring a **new employee** 👷 every time (costly)  
+> **Task** = Assigning work to an **existing employee** from a pool (efficient) ✅
+
+---
