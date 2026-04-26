@@ -1423,7 +1423,7 @@ static async Task Main()
 
 ---
 
-### Q 18. How do you efficiently handle CPU-bound operations in C#?
+### Q18. How do you efficiently handle CPU-bound operations in C#?
 
 **Answer:**  
 Use `Parallel.For` / `Parallel.ForEach` for loops, `Task.Run` to offload work, and `async`/`await` to keep the main thread free.
@@ -1459,3 +1459,195 @@ var results = data.AsParallel().Where(x => x % 2 == 0).ToList();
 
 ---
 
+### Q19. What is Boxing and Unboxing in C#?
+
+**Answer:**  
+**Boxing** converts a value type → object (heap). **Unboxing** converts object → value type (stack). Unboxing requires an **explicit cast**.
+
+---
+
+#### 📁 Boxing — Value Type → Object (Heap)
+```csharp
+int num = 10;
+object obj = num;  // Boxing
+```
+
+---
+
+#### 📁 Unboxing — Object → Value Type (Stack)
+```csharp
+object obj = 10;
+int num = (int)obj;  // Unboxing (Explicit cast required)
+```
+
+---
+
+### 🧠 Memory Tip
+> **Boxing** = Putting a value in a **box** 📦 (heap, slower)  
+> **Unboxing** = Taking it **out of the box** 📤 (needs cast, even slower)  
+> ⚠️ Avoid in loops — causes **performance overhead**!
+
+---
+
+### Q20. When to Use Async/Await in C#?
+
+**Answer:**  
+Use `async`/`await` for **I/O-bound** operations (DB calls, file reads, HTTP requests). It **releases the thread** while waiting — improving scalability, not raw speed.
+
+---
+
+#### 📁 Dependent Tasks (Sequential) — 10 mins total
+```csharp
+await MakeOmeletteAsync(); // 5 min
+await MakeTeaAsync();      // 5 min (starts AFTER omelette)
+// Total = 5 + 5 = 10 minutes ⏱️
+```
+
+---
+
+#### 📁 Independent Tasks (Parallel) — 5 mins total
+```csharp
+var omeletteTask = MakeOmeletteAsync(); // runs in background
+var teaTask = MakeTeaAsync();           // runs in background
+
+await Task.WhenAll(omeletteTask, teaTask);
+// Total = max(5, 5) = 5 minutes ⏱️
+```
+
+---
+
+#### 📁 Real-World I/O Example
+```csharp
+var fileTask = ReadFileAsync();        // I/O-bound
+var apiTask  = MakeHttpRequestAsync(); // I/O-bound
+
+await Task.WhenAll(fileTask, apiTask); // Both run simultaneously
+```
+
+---
+
+### 🧠 Memory Tip
+> **Dependent** → `await` one by one → time = **sum** ➕  
+> **Independent** → `Task.WhenAll` → time = **longest** task ⚡  
+> ⚠️ Async doesn't make code **faster** — it makes servers **more scalable**!
+
+---
+
+### Q21. What are Generics in C#?
+
+**Answer:**  
+Generics allow you to define a **class, method, or interface** with a **placeholder for a data type** (`<T>`).  
+✅ Provides **type safety**, **reusability**, and **performance**.
+
+---
+
+#### 📁 Without Generics (❌ Not Type Safe)
+```csharp
+ArrayList list = new ArrayList();
+list.Add(1);
+list.Add("oops"); // No error — but wrong!
+```
+
+---
+
+#### 📁 With Generics (✅ Type Safe)
+```csharp
+List<int> list = new List<int>();
+list.Add(1);
+list.Add("oops"); // ❌ Compile-time error — caught early!
+```
+
+---
+
+#### 📁 Generic Method
+```csharp
+T GetFirst<T>(List<T> items) => items[0];
+
+GetFirst<int>(new List<int> { 1, 2, 3 });       // returns 1
+GetFirst<string>(new List<string> { "a", "b" }); // returns "a"
+```
+
+---
+
+#### 📁 Generic Class
+```csharp
+class Box<T>
+{
+    public T Value { get; set; }
+}
+
+var intBox    = new Box<int>    { Value = 10 };
+var stringBox = new Box<string> { Value = "Hello" };
+```
+
+---
+
+### 🧠 Memory Tip
+> **`<T>`** = Placeholder for **any type** 📦  
+> No generics → `object` casting → **boxing overhead** + **runtime errors** ❌  
+> Generics → **compile-time safety** + **no casting** + **faster** ✅
+
+---
+
+### Q22. What is a Destructor in C#?
+
+**Answer:**  
+A destructor is a special method that **automatically runs when an object is destroyed**.  
+✅ Used to **clean up resources** (files, DB connections, unmanaged memory).
+
+---
+
+#### 📁 Destructor Example
+```csharp
+class FileManager
+{
+    ~FileManager() // Destructor — called automatically by GC
+    {
+        Console.WriteLine("Cleaning up resources...");
+    }
+}
+```
+
+---
+
+### 🧠 Memory Tip
+> **Constructor** = runs when object is **created** 🟢  
+> **Destructor** = runs when object is **destroyed** 🔴  
+> ⚠️ You **can't call** a destructor manually — **GC decides** when!
+
+---
+
+### Q23. What is the `is` Keyword in C#?
+
+**Answer:**  
+The `is` keyword checks if an object is of a **specific type**.  
+✅ Returns `true` if match, otherwise `false`.
+
+---
+
+#### 📁 Basic Example
+```csharp
+object obj = "Hello";
+
+if (obj is string)
+    Console.WriteLine("It's a string!"); // ✅ prints this
+```
+
+---
+
+#### 📁 With Pattern Matching (C# 7+)
+```csharp
+object obj = "Hello";
+
+if (obj is string str)
+    Console.WriteLine(str.ToUpper()); // ✅ HELLO — no cast needed!
+```
+
+---
+
+### 🧠 Memory Tip
+> **`is`** = check type ✅ → safer than casting  
+> **`as`** = try cast → returns `null` if fails  
+> **`(Type)`** = force cast → throws exception if fails ❌
+
+---

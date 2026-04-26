@@ -283,3 +283,30 @@ using (SqlConnection con = new SqlConnection(connString))
 > from memory **automatically** — you don't need to clean yourself.
 
 ---
+
+
+### Q10. What is CORS?
+
+**Answer:**  
+**CORS (Cross-Origin Resource Sharing)** is a browser security feature that **blocks requests** from a different domain by default. Backend must send specific **HTTP headers** to allow access.
+
+---
+
+#### 🚫 Without CORS — Request Blocked
+```javascript
+fetch("https://mybackend.com/api/data")
+  .then(res => res.json())
+  .catch(err => console.error(err));
+
+// ❌ Browser Error:
+// "Access to fetch at 'https://mybackend.com/api/data'
+//  from origin 'https://myfrontend.com' has been blocked by CORS policy."
+```
+
+---
+
+### 🧠 Memory Tip
+> **Frontend** `https://myfrontend.com` → calls → **Backend** `https://mybackend.com`  
+> Different domain = browser **blocks** it 🚫 → Enable CORS on backend to **allow** it ✅
+
+---
