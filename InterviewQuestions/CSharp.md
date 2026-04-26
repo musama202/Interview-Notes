@@ -1422,3 +1422,40 @@ static async Task Main()
 > **Task** = Assigning work to an **existing employee** from a pool (efficient) ✅
 
 ---
+
+### Q 18. How do you efficiently handle CPU-bound operations in C#?
+
+**Answer:**  
+Use `Parallel.For` / `Parallel.ForEach` for loops, `Task.Run` to offload work, and `async`/`await` to keep the main thread free.
+
+---
+
+#### 📁 Parallel.For / ForEach
+```csharp
+Parallel.For(0, 10, i => DoWork(i));
+
+Parallel.ForEach(items, item => Process(item));
+```
+
+---
+
+#### 📁 Task.Run (CPU-bound)
+```csharp
+int result = await Task.Run(() => HeavyCalculation());
+```
+
+---
+
+#### 📁 PLINQ
+```csharp
+var results = data.AsParallel().Where(x => x % 2 == 0).ToList();
+```
+
+---
+
+### 🧠 Memory Tip
+> **CPU-bound** → `Parallel` / `Task.Run` → use multiple cores 🖥️  
+> **I/O-bound** → `async`/`await` → free the thread while waiting ⏳
+
+---
+
