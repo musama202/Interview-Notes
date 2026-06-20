@@ -761,3 +761,634 @@ public class CheckoutController : ControllerBase
 > 🚗 Fastest / 🛣️ Highway only / 🌿 Avoid tolls  
 > The **car (context)** doesn't change — only the **route algorithm (strategy)** does.
 
+
+
+### Q7. What is Saga Design Pattern?
+
+**Answer:**  
+**Saga** manages **long-running transactions** across **multiple services** in a  
+**distributed/microservices** architecture — where a single database transaction is not possible.  
+Each step has a **compensating action** to undo it if something fails.
+
+---
+
+#### ❌ The Problem — Distributed Transaction
+
+```
+Order Service   → saves order        ✅
+Payment Service → charges card       ✅
+Inventory Service → reduces stock    ✅
+Shipping Service → creates shipment  ❌ FAILS!
+
+// Payment already charged, stock already reduced
+// No single transaction to roll back across services 😱
+```
+> You **cannot** use `Unit of Work` or DB transactions across separate microservices.
+
+---
+
+#### ✅ Saga Solution — Each Step Has a Compensating Action
+
+```
+Step 1: Create Order       ↔ Cancel Order
+Step 2: Charge Payment     ↔ Refund Payment
+Step 3: Reduce Inventory   ↔ Restore Inventory
+Step 4: Create Shipment    ↔ Cancel Shipment
+
+If Step 4 fails → run compensating actions in reverse:
+    ← Restore Inventory
+    ← Refund Payment
+    ← Cancel Order
+```
+
+---
+
+#### 🔀 Two Types of Saga
+
+| Type | How It Works | Use When |
+|---|---|---|
+| **Choreography** | Services talk via events (no central brain) | Simple flows, few services |
+| **Orchestration** | Central Saga Orchestrator controls the flow | Complex flows, many services |
+
+---
+
+#### ✅ Type 1 — Choreography (Event-Based)
+
+```csharp
+// Order Service — publishes event
+public class OrderService
+{
+    private readonly IEventBus _bus;
+
+    public async Task CreateOrder(Order order)
+    {
+        await _orderRepo.Add(order);
+        await _bus.Publish(new OrderCreatedEvent(order.Id)); // 📢 fire event
+    }
+}
+
+// Payment Service — listens and reacts
+public class PaymentService : IEventHandler<OrderCreatedEvent>
+{
+    public async Task Handle(OrderCreatedEvent e)
+    {
+        var success = await ChargeCard(e.OrderId);
+
+        if (success)
+            await _bus.Publish(new PaymentSucceededEvent(e.OrderId));
+        else
+            await _bus.Publish(new PaymentFailedEvent(e.OrderId)); // ❌ trigger compensation
+    }
+}
+
+// Order Service — listens for failure and compensates
+public class OrderService : IEventHandler<PaymentFailedEvent>
+{
+    public async Task Handle(PaymentFailedEvent e)
+    {
+        await CancelOrder(e.OrderId); // 🔄 compensating action
+    }
+}
+```
+
+---
+
+#### ✅ Type 2 — Orchestration (Central Controller)
+
+```csharp
+public class OrderSagaOrchestrator
+{
+    public async Task Execute(Order order)
+    {
+        // Step 1
+        var orderCreated = await _orderService.Create(order);
+        if (!orderCreated) return; // stop
+
+        // Step 2
+        var paymentDone = await _paymentService.Charge(order);
+        if (!paymentDone)
+        {
+            await _orderService.Cancel(order.Id);  // 🔄 compensate step 1
+            return;
+        }
+
+        // Step 3
+        var stockReduced = await _inventoryService.Reduce(order);
+        if (!stockReduced)
+        {
+            await _paymentService.Refund(order.Id); // 🔄 compensate step 2
+            await _orderService.Cancel(order.Id);   // 🔄 compensate step 1
+            return;
+        }
+
+        // Step 4
+        var shipped = await _shippingService.Create(order);
+        if (!shipped)
+        {
+            await _inventoryService.Restore(order.Id); // 🔄 compensate step 3
+            await _paymentService.Refund(order.Id);    // 🔄 compensate step 2
+            await _orderService.Cancel(order.Id);      // 🔄 compensate step 1
+        }
+    }
+}
+```
+
+---
+
+#### 🏆 Real World — Using MassTransit (Popular in .NET)
+
+```csharp
+public class OrderStateMachine : MassTransitStateMachine<OrderState>
+{
+    public OrderStateMachine()
+    {
+        Initially(
+            When(OrderSubmitted)
+                .Then(ctx => ctx.Saga.OrderId = ctx.Message.OrderId)
+                .TransitionTo(AwaitingPayment)
+                .Publish(ctx => new ProcessPaymentCommand(ctx.Saga.OrderId))
+        );
+
+        During(AwaitingPayment,
+            When(PaymentSucceeded)
+                .TransitionTo(AwaitingShipment)
+                .Publish(ctx => new CreateShipmentCommand(ctx.Saga.OrderId)),
+
+            When(PaymentFailed)
+                .TransitionTo(Cancelled)
+                .Publish(ctx => new CancelOrderCommand(ctx.Saga.OrderId)) // 🔄 compensate
+        );
+    }
+
+    public State AwaitingPayment { get; private set; }
+    public State AwaitingShipment { get; private set; }
+    public State Cancelled { get; private set; }
+
+    public Event<OrderSubmittedEvent> OrderSubmitted { get; private set; }
+    public Event<PaymentSucceededEvent> PaymentSucceeded { get; private set; }
+    public Event<PaymentFailedEvent> PaymentFailed { get; private set; }
+}
+```
+
+---
+
+#### 🔁 Saga vs Unit of Work
+
+| | Unit of Work | Saga |
+|---|---|---|
+| Scope | Single service / DB | Multiple services / DBs |
+| Transaction type | ACID (DB transaction) | Eventual consistency |
+| Failure handling | DB rollback | Compensating actions |
+| Architecture | Monolith / single DB | Microservices |
+
+---
+
+#### 🔁 Choreography vs Orchestration
+
+| | Choreography | Orchestration |
+|---|---|---|
+| Control | Decentralized (events) | Centralized (orchestrator) |
+| Coupling | Loose ✅ | Tighter |
+| Visibility | Hard to track ❌ | Easy to track ✅ |
+| Complexity | Simple flows ✅ | Complex flows ✅ |
+
+---
+
+#### 🧠 Memory Tip
+> Saga = **Wedding Planning** 💍  
+> Venue booked ✅ → Catering booked ✅ → Band booked ✅ → Flowers ❌ FAILS  
+> You must now **unbook the band, catering, venue** in reverse — compensating actions!  
+> No single contract covers everything — each vendor is a separate service. 🎊
+
+### Q8. What is Circuit Breaker Pattern?
+
+**Answer:**  
+**Circuit Breaker** prevents an application from **repeatedly calling a failing service**.  
+Instead of hammering a dead service, it **trips open** and returns a fast failure —  
+giving the failing service time to recover.
+
+---
+
+#### ❌ Without Circuit Breaker — Cascade Failure
+
+```
+User Request → Order Service → Payment Service ❌ (down)
+                                    ↓
+                             timeout after 30s 😴
+                                    ↓
+User Request → Order Service → Payment Service ❌ (still down)
+                                    ↓
+                             timeout after 30s 😴
+                                    ↓
+// 1000 users waiting → Order Service overwhelmed → it goes down too 💥
+// One failed service takes down the entire system — Cascade Failure 😱
+```
+
+---
+
+#### ✅ Circuit Breaker — 3 States
+
+```
+                    failures < threshold
+        ┌─────────────────────────────────────┐
+        ▼                                     │
+    [CLOSED] ──── too many failures ────► [OPEN]
+    normal flow                           fast fail
+                                              │
+                                     after timeout
+                                              │
+                                              ▼
+                                        [HALF-OPEN]
+                                        test one request
+                                        success? → CLOSED
+                                        fail?    → OPEN
+```
+
+| State | Behavior |
+|---|---|
+| **Closed** | Requests flow normally, failures counted |
+| **Open** | All requests fail immediately (no call made) |
+| **Half-Open** | One test request allowed to check recovery |
+
+---
+
+#### ✅ Implementation with Polly (Standard in .NET)
+
+```csharp
+// Install: dotnet add package Microsoft.Extensions.Http.Polly
+```
+
+```csharp
+// Program.cs
+builder.Services
+    .AddHttpClient<IPaymentService, PaymentService>()
+    .AddPolicyHandler(GetCircuitBreakerPolicy());
+
+static IAsyncPolicy<HttpResponseMessage> GetCircuitBreakerPolicy()
+{
+    return HttpPolicyExtensions
+        .HandleTransientHttpError() // handles 5xx, timeouts
+        .CircuitBreakerAsync(
+            handledEventsAllowedBeforeBreaking: 3,  // open after 3 failures
+            durationOfBreak: TimeSpan.FromSeconds(30) // stay open for 30s
+        );
+}
+```
+
+---
+
+#### 🏆 Advanced — With Fallback + Retry + Circuit Breaker
+
+```csharp
+static IAsyncPolicy<HttpResponseMessage> GetResiliencePolicy()
+{
+    // 1️⃣ Retry — try 3 times before giving up
+    var retryPolicy = HttpPolicyExtensions
+        .HandleTransientHttpError()
+        .RetryAsync(3, onRetry: (result, retryCount) =>
+        {
+            Console.WriteLine($"Retry {retryCount}...");
+        });
+
+    // 2️⃣ Circuit Breaker — open after 5 failures, wait 60s
+    var circuitBreakerPolicy = HttpPolicyExtensions
+        .HandleTransientHttpError()
+        .CircuitBreakerAsync(
+            handledEventsAllowedBeforeBreaking: 5,
+            durationOfBreak: TimeSpan.FromSeconds(60),
+            onBreak: (result, duration) =>
+                Console.WriteLine($"⚡ Circuit OPEN for {duration.TotalSeconds}s"),
+            onReset: () =>
+                Console.WriteLine("✅ Circuit CLOSED — service recovered"),
+            onHalfOpen: () =>
+                Console.WriteLine("🔄 Circuit HALF-OPEN — testing...")
+        );
+
+    // 3️⃣ Fallback — return default if everything fails
+    var fallbackPolicy = HttpPolicyExtensions
+        .HandleTransientHttpError()
+        .FallbackAsync(new HttpResponseMessage(HttpStatusCode.OK)
+        {
+            Content = new StringContent("{ 'status': 'service unavailable' }")
+        });
+
+    // wrap all together — outermost executes first
+    return Policy.WrapAsync(fallbackPolicy, retryPolicy, circuitBreakerPolicy);
+}
+```
+
+---
+
+#### ✅ Usage in Service
+
+```csharp
+public class PaymentService : IPaymentService
+{
+    private readonly HttpClient _client;
+
+    public PaymentService(HttpClient client) { _client = client; }
+
+    public async Task<string> ChargeAsync(decimal amount)
+    {
+        // Polly policy applied automatically via HttpClient
+        var response = await _client.PostAsync("/api/charge",
+            new StringContent(amount.ToString()));
+
+        // if circuit is OPEN — Polly throws BrokenCircuitException
+        // fallback policy catches it and returns default response
+        return await response.Content.ReadAsStringAsync();
+    }
+}
+```
+
+---
+
+#### 🏆 Polly v8 — New Resilience Pipeline (.NET 8)
+
+```csharp
+// New way in .NET 8+
+builder.Services.AddResiliencePipeline("payment", builder =>
+{
+    builder
+        .AddRetry(new RetryStrategyOptions
+        {
+            MaxRetryAttempts = 3,
+            Delay = TimeSpan.FromSeconds(1)
+        })
+        .AddCircuitBreaker(new CircuitBreakerStrategyOptions
+        {
+            FailureRatio = 0.5,               // open if 50% requests fail
+            SamplingDuration = TimeSpan.FromSeconds(10),
+            MinimumThroughput = 5,            // min requests before evaluating
+            BreakDuration = TimeSpan.FromSeconds(30)
+        })
+        .AddTimeout(TimeSpan.FromSeconds(5)); // per request timeout
+});
+```
+
+---
+
+#### 🔁 Retry vs Circuit Breaker
+
+| | Retry | Circuit Breaker |
+|---|---|---|
+| Purpose | Handle temporary glitch | Handle prolonged failure |
+| Behavior | Tries again immediately | Stops trying for a period |
+| Best for | Network blips | Service is fully down |
+| Used together | ✅ Yes | ✅ Yes |
+
+---
+
+#### 🔁 Without vs With Circuit Breaker
+
+| | Without | With |
+|---|---|---|
+| Failing service | Hammered with requests ❌ | Gets time to recover ✅ |
+| User experience | Long timeouts 😴 | Fast failure response ✅ |
+| Cascade failure | Likely 💥 | Prevented ✅ |
+| System resilience | Low ❌ | High ✅ |
+
+---
+
+#### 🧠 Memory Tip
+> Circuit Breaker = **Electrical Circuit Breaker** ⚡🏠  
+> Too much current (failures) → breaker **trips open** → power cut to protect wiring  
+> After a while → **test** if safe → if yes, **reset** (closed) → power restored  
+> Protects your house (system) from burning down (cascade failure) 🔥
+
+### Q9. What is SOLID in C#?
+
+**Answer:**  
+**SOLID** is a set of **5 design principles** that make code  
+**maintainable, scalable, and testable**.  
+Each letter is one principle.
+
+---
+
+```
+S — Single Responsibility Principle  (SRP)
+O — Open/Closed Principle            (OCP)
+L — Liskov Substitution Principle    (LSP)
+I — Interface Segregation Principle  (ISP)
+D — Dependency Inversion Principle   (DIP)
+```
+
+---
+
+#### S — Single Responsibility Principle (SRP)
+> **A class should have only ONE reason to change.**
+
+#### ❌ Bad — One class doing too much
+
+```csharp
+public class OrderService
+{
+    public void CreateOrder(Order order) { ... }   // business logic
+    public void SendEmail(Order order) { ... }     // ❌ email logic here too
+    public void LogOrder(Order order) { ... }      // ❌ logging here too
+}
+// If email changes → modify OrderService ❌
+// If logging changes → modify OrderService ❌
+```
+
+#### ✅ Good — Each class has one job
+
+```csharp
+public class OrderService   { public void CreateOrder(Order order) { ... } }
+public class EmailService   { public void SendEmail(Order order) { ... } }
+public class LoggerService  { public void LogOrder(Order order) { ... } }
+// each class changes for only ONE reason ✅
+```
+
+---
+
+#### O — Open/Closed Principle (OCP)
+> **Open for extension, Closed for modification.**  
+> Add new behavior without changing existing code.
+
+#### ❌ Bad — Modify existing class for every new type
+
+```csharp
+public class DiscountService
+{
+    public decimal GetDiscount(string customerType)
+    {
+        if (customerType == "Regular") return 0.1m;      // ❌
+        if (customerType == "Premium") return 0.2m;      // ❌
+        if (customerType == "VIP")     return 0.3m;      // ❌
+        // adding new type = modify this class forever
+    }
+}
+```
+
+#### ✅ Good — Extend via new class, never modify existing
+
+```csharp
+public interface IDiscount { decimal GetDiscount(); }
+
+public class RegularDiscount : IDiscount { public decimal GetDiscount() => 0.1m; }
+public class PremiumDiscount : IDiscount { public decimal GetDiscount() => 0.2m; }
+public class VIPDiscount     : IDiscount { public decimal GetDiscount() => 0.3m; }
+
+// adding Gold customer = just add new class, touch nothing else ✅
+public class GoldDiscount : IDiscount { public decimal GetDiscount() => 0.4m; }
+```
+
+---
+
+#### L — Liskov Substitution Principle (LSP)
+> **Subclass should be replaceable by its parent class**  
+> without breaking the program.
+
+#### ❌ Bad — Subclass breaks parent behavior
+
+```csharp
+public class Bird
+{
+    public virtual void Fly() => Console.WriteLine("Flying...");
+}
+
+public class Penguin : Bird
+{
+    public override void Fly()
+    {
+        throw new Exception("Penguins can't fly!"); // ❌ breaks LSP
+    }
+}
+
+// using parent reference breaks with Penguin
+Bird bird = new Penguin();
+bird.Fly(); // 💥 Exception!
+```
+
+#### ✅ Good — Correct abstraction
+
+```csharp
+public abstract class Bird { public abstract void Move(); }
+
+public class Eagle   : Bird { public override void Move() => Console.WriteLine("Flying ✈️"); }
+public class Penguin : Bird { public override void Move() => Console.WriteLine("Swimming 🏊"); }
+
+// ✅ substitution works — no surprises
+Bird bird = new Penguin();
+bird.Move(); // Swimming 🏊 — works fine
+```
+
+---
+
+#### I — Interface Segregation Principle (ISP)
+> **No class should be forced to implement methods it does not use.**  
+> Split large interfaces into smaller specific ones.
+
+#### ❌ Bad — Fat interface forces unused methods
+
+```csharp
+public interface IWorker
+{
+    void Work();
+    void Eat();
+    void Sleep();
+}
+
+public class Robot : IWorker
+{
+    public void Work()  => Console.WriteLine("Working...");
+    public void Eat()   => throw new NotImplementedException(); // ❌ robots don't eat
+    public void Sleep() => throw new NotImplementedException(); // ❌ robots don't sleep
+}
+```
+
+#### ✅ Good — Split into focused interfaces
+
+```csharp
+public interface IWorkable  { void Work(); }
+public interface IEatable   { void Eat(); }
+public interface ISleepable { void Sleep(); }
+
+public class Human : IWorkable, IEatable, ISleepable
+{
+    public void Work()  => Console.WriteLine("Working 💼");
+    public void Eat()   => Console.WriteLine("Eating 🍔");
+    public void Sleep() => Console.WriteLine("Sleeping 😴");
+}
+
+public class Robot : IWorkable
+{
+    public void Work() => Console.WriteLine("Working ⚙️"); // ✅ only what it needs
+}
+```
+
+---
+
+#### D — Dependency Inversion Principle (DIP)
+> **Depend on abstractions (interfaces), not concrete classes.**  
+> High-level modules should not depend on low-level modules.
+
+#### ❌ Bad — Depends on concrete class
+
+```csharp
+public class OrderService
+{
+    private SqlDatabase _db = new SqlDatabase(); // ❌ tightly coupled
+
+    public void SaveOrder(Order order)
+    {
+        _db.Save(order); // can't swap to MongoDB, can't unit test
+    }
+}
+```
+
+#### ✅ Good — Depends on abstraction
+
+```csharp
+public interface IDatabase { void Save(Order order); }
+
+public class SqlDatabase     : IDatabase { public void Save(Order o) => Console.WriteLine("Saved to SQL"); }
+public class MongoDatabase   : IDatabase { public void Save(Order o) => Console.WriteLine("Saved to Mongo"); }
+
+public class OrderService
+{
+    private readonly IDatabase _db;
+
+    public OrderService(IDatabase db) { _db = db; } // ✅ injected
+
+    public void SaveOrder(Order order) => _db.Save(order);
+}
+
+// swap DB without touching OrderService ✅
+var service = new OrderService(new MongoDatabase());
+```
+
+---
+
+#### 🔁 SOLID — Quick Reference Card
+
+| Principle | Keyword | Rule |
+|---|---|---|
+| **S** — SRP | One job | One class, one reason to change |
+| **O** — OCP | Extend, not modify | Add new class, don't touch old |
+| **L** — LSP | Substitutable | Subclass must honor parent contract |
+| **I** — ISP | Small interfaces | Don't force unused methods |
+| **D** — DIP | Abstractions | Depend on interface, not concrete |
+
+---
+
+#### 🔁 Which SOLID Principle Fixes What?
+
+| Problem | Principle |
+|---|---|
+| Class doing too many things | SRP |
+| Adding feature breaks existing code | OCP |
+| Subclass throwing `NotImplementedException` | LSP |
+| Implementing empty/useless interface methods | ISP |
+| Hard to swap DB / hard to unit test | DIP |
+
+---
+
+#### 🧠 Memory Tip
+> **S**am **O**nly **L**ikes **I**ce **D**esserts 🍦  
+> **S**ingle Responsibility  
+> **O**pen Closed  
+> **L**iskov Substitution  
+> **I**nterface Segregation  
+> **D**ependency Inversion
