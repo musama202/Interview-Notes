@@ -310,3 +310,132 @@ fetch("https://mybackend.com/api/data")
 > Different domain = browser **blocks** it 🚫 → Enable CORS on backend to **allow** it ✅
 
 ---
+
+### Q11. What is Middleware in ASP.NET Core?
+
+**Answer:**  
+**Middleware** is a series of components that form a **pipeline** to handle every HTTP request and response — executed in the order they are registered.
+
+---
+
+#### 🔄 The Pipeline Flow
+
+```
+Request → Logging → Auth → Routing → Controller → Response
+             ↑ Response flows back the same chain ↑
+```
+
+Each middleware calls `next()` to pass control forward.  
+Code **before** `next()` runs on the way **in**, code **after** runs on the way **out**.
+
+---
+
+#### ✅ Registering Middleware — Order Matters!
+
+```csharp
+var app = builder.Build();
+
+app.UseExceptionHandler("/error");  // 1st — wraps everything, catches all errors
+app.UseAuthentication();            // 2nd — who are you?
+app.UseAuthorization();             // 3rd — what can you do?
+app.MapControllers();               // last — your actual endpoints
+```
+
+---
+
+#### ✍️ Custom Middleware (Bare Minimum)
+
+```csharp
+app.Use(async (context, next) => {
+    // runs BEFORE → (on the way in)
+    await next();
+    // runs AFTER ← (on the way back)
+});
+```
+
+---
+
+#### 🧠 Memory Tip
+> Think of middleware like **airport security lanes** — every passenger (request) passes through each checkpoint **in order** before reaching the gate (controller).  
+> ⚠️ **Order matters!** `UseAuthentication()` must always come before `UseAuthorization()`.
+
+---
+
+### Q12. What are Action Filters in ASP.NET Core?
+
+**Answer:**  
+**Action Filters** are attributes that run **before or after** a controller action executes.  
+Used for cross-cutting concerns — logging, validation, auth checks — without touching your action code.
+
+---
+
+#### 🔄 Execution Order
+
+```
+Request → OnActionExecuting → Action Method → OnActionExecuted → Response
+```
+
+---
+
+#### ✅ Built-in Filters
+
+| Filter | Purpose |
+|---|---|
+| `[Authorize]` | Checks if user is authenticated |
+| `[ValidateAntiForgeryToken]` | CSRF protection |
+| `[ResponseCache]` | Caches the response |
+| `[ServiceFilter]` | Resolves filter from DI container |
+
+---
+
+#### ✍️ Custom Action Filter
+
+```csharp
+public class LogActionFilter : IActionFilter
+{
+    // runs BEFORE the action
+    public void OnActionExecuting(ActionExecutingContext context)
+    {
+        Console.WriteLine("Before action runs");
+    }
+
+    // runs AFTER the action
+    public void OnActionExecuted(ActionExecutedContext context)
+    {
+        Console.WriteLine("After action runs");
+    }
+}
+```
+
+---
+
+#### 📌 Register & Use It
+
+```csharp
+// Option 1 — On a single action
+[ServiceFilter(typeof(LogActionFilter))]
+public IActionResult GetData() { ... }
+
+// Option 2 — Globally (applies to ALL actions)
+builder.Services.AddControllers(options =>
+{
+    options.Filters.Add<LogActionFilter>();
+});
+```
+
+---
+
+#### 🔁 Filter vs Middleware — Quick Difference
+
+| | Middleware | Action Filter |
+|---|---|---|
+| Scope | Every request | Controller/Action only |
+| Access to Action | ❌ No | ✅ Yes (params, result) |
+| Use for | Auth, logging, CORS | Validation, logging per action |
+
+---
+
+#### 🧠 Memory Tip
+> **Middleware** = security guard at the **building door** (every request).  
+> **Action Filter** = assistant at your **office desk** (only when your action runs).
+
