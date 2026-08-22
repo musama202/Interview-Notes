@@ -1392,3 +1392,696 @@ var service = new OrderService(new MongoDatabase());
 > **L**iskov Substitution  
 > **I**nterface Segregation  
 > **D**ependency Inversion
+
+### Q10. What is Clean Architecture in .NET?
+
+**Answer:**  
+**Clean Architecture** is a software architecture pattern that organizes an application into **layers with clear separation of concerns**.
+
+The main goal is to make the application:
+
+- **Maintainable**
+- **Testable**
+- **Scalable**
+- **Loosely coupled**
+- **Easy to change**
+
+The most important rule is:
+
+> **Dependencies should point inward toward the business/domain layer.**
+
+---
+
+```text
+Presentation
+     ↓
+Application
+     ↓
+Domain
+     ↑
+Infrastructure
+```
+
+---
+
+#### 🏗️ Clean Architecture Layers
+
+```text
+┌──────────────────────────────────────────┐
+│              Presentation                │
+│       ASP.NET Core Controllers           │
+└────────────────────┬─────────────────────┘
+                     │
+                     ▼
+┌──────────────────────────────────────────┐
+│               Application                │
+│    Use Cases / Services / DTOs / CQRS    │
+└────────────────────┬─────────────────────┘
+                     │
+                     ▼
+┌──────────────────────────────────────────┐
+│                 Domain                   │
+│ Entities / Value Objects / Business Rules│
+└──────────────────────────────────────────┘
+                     ▲
+                     │
+┌────────────────────┴─────────────────────┐
+│             Infrastructure               │
+│ EF Core / SQL / Redis / APIs / RabbitMQ  │
+└──────────────────────────────────────────┘
+```
+
+---
+
+#### 1️⃣ Domain Layer
+
+> **Contains the core business logic and rules.**
+
+It contains:
+
+```text
+Entities
+Value Objects
+Business Rules
+Domain Interfaces
+Enums
+Domain Exceptions
+```
+
+#### Example
+
+```csharp
+public class Order
+{
+    public Guid Id { get; private set; }
+
+    public decimal TotalAmount { get; private set; }
+
+    public void AddItem(decimal price)
+    {
+        if (price <= 0)
+            throw new ArgumentException("Price must be greater than zero");
+
+        TotalAmount += price;
+    }
+}
+```
+
+#### ❌ Domain should NOT depend on:
+
+```text
+ASP.NET Core
+Entity Framework
+SQL Server
+Redis
+RabbitMQ
+Azure
+Controllers
+HTTP
+```
+
+For example:
+
+```csharp
+public class Order
+{
+    private readonly AppDbContext _db; // ❌ Bad
+}
+```
+
+The Domain should remain **independent**.
+
+---
+
+#### 2️⃣ Application Layer
+
+> **Contains application-specific use cases and orchestration logic.**
+
+Examples:
+
+```text
+Create Order
+Get Order
+Cancel Order
+Process Payment
+Send Notification
+```
+
+#### Example
+
+```csharp
+public class CreateOrderService
+{
+    private readonly IOrderRepository _repository;
+
+    public CreateOrderService(IOrderRepository repository)
+    {
+        _repository = repository;
+    }
+
+    public async Task CreateOrder(Order order)
+    {
+        await _repository.AddAsync(order);
+    }
+}
+```
+
+The Application layer depends on an **abstraction**:
+
+```csharp
+IOrderRepository
+```
+
+It does not care whether the implementation uses:
+
+```text
+SQL Server
+MongoDB
+Dataverse
+External API
+```
+
+---
+
+#### 3️⃣ Infrastructure Layer
+
+> **Contains technical implementations and external dependencies.**
+
+Examples:
+
+```text
+Entity Framework
+SQL Server
+Redis
+RabbitMQ
+Azure Service Bus
+External APIs
+Email
+File Storage
+Dataverse
+```
+
+#### Example
+
+```csharp
+public class OrderRepository : IOrderRepository
+{
+    private readonly AppDbContext _context;
+
+    public OrderRepository(AppDbContext context)
+    {
+        _context = context;
+    }
+
+    public async Task AddAsync(Order order)
+    {
+        _context.Orders.Add(order);
+
+        await _context.SaveChangesAsync();
+    }
+}
+```
+
+Here:
+
+```text
+IOrderRepository
+       ▲
+       │
+OrderRepository
+```
+
+The **interface is the abstraction**, while Infrastructure provides the implementation.
+
+---
+
+#### 4️⃣ Presentation Layer
+
+> **Handles communication with the outside world.**
+
+In ASP.NET Core, this is usually:
+
+```text
+Controllers
+Middleware
+Authentication
+Authorization
+API Configuration
+```
+
+##### Example
+
+```csharp
+[ApiController]
+[Route("api/orders")]
+public class OrdersController : ControllerBase
+{
+    private readonly ICreateOrderService _service;
+
+    public OrdersController(ICreateOrderService service)
+    {
+        _service = service;
+    }
+
+    [HttpPost]
+    public async Task<IActionResult> Create(CreateOrderRequest request)
+    {
+        var result = await _service.CreateOrder(request);
+
+        return Ok(result);
+    }
+}
+```
+
+The controller should be **thin**.
+
+❌ Don't put complex business logic inside controllers.
+
+---
+
+#### 🔥 Dependency Rule
+
+This is the **most important concept** in Clean Architecture.
+
+#### ❌ Bad
+
+```text
+Domain → Entity Framework
+Domain → SQL Server
+Domain → ASP.NET Core
+Domain → Redis
+```
+
+##### ✅ Good
+
+```text
+Application
+     ↓
+Interface
+     ↑
+Infrastructure
+```
+
+For example:
+
+```csharp
+// Application
+
+public interface IOrderRepository
+{
+    Task AddAsync(Order order);
+}
+```
+
+Infrastructure implements it:
+
+```csharp
+// Infrastructure
+
+public class OrderRepository : IOrderRepository
+{
+    public async Task AddAsync(Order order)
+    {
+        // EF Core implementation
+    }
+}
+```
+
+So:
+
+```text
+             IOrderRepository
+             ▲             ▲
+             │             │
+       Application    Infrastructure
+```
+
+This is closely related to the **Dependency Inversion Principle (DIP)**.
+
+---
+
+#### 🔄 Real Request Flow
+
+Suppose the client sends:
+
+```http
+POST /api/orders
+```
+
+```json
+{
+    "productId": 100,
+    "quantity": 2
+}
+```
+
+The request flows like this:
+
+```text
+Client
+  │
+  ▼
+Controller
+  │
+  ▼
+Application Service / Command Handler
+  │
+  ▼
+Domain Entity
+  │
+  ▼
+Repository Interface
+  │
+  ▼
+Infrastructure Repository
+  │
+  ▼
+SQL Server
+```
+
+In simple terms:
+
+```text
+POST /orders
+      ↓
+OrdersController
+      ↓
+CreateOrderService
+      ↓
+Order
+      ↓
+IOrderRepository
+      ↓
+OrderRepository
+      ↓
+EF Core
+      ↓
+SQL Server
+```
+
+---
+
+#### ❌ Bad Architecture
+
+Everything is inside the controller:
+
+```csharp
+[HttpPost]
+public async Task<IActionResult> Create(Order order)
+{
+    // Validation
+    if (order.Amount <= 0)
+        return BadRequest();
+
+    // Business logic
+    order.Total = order.Price * order.Quantity;
+
+    // Database
+    using var connection =
+        new SqlConnection(connectionString);
+
+    await connection.ExecuteAsync(
+        "INSERT INTO Orders ...");
+
+    // Email
+    await _emailService.SendAsync(...);
+
+    return Ok();
+}
+```
+
+Controller is now responsible for:
+
+```text
+❌ Validation
+❌ Business logic
+❌ Database
+❌ SQL
+❌ Email
+```
+
+This creates **tight coupling**.
+
+---
+
+#### ✅ Good — Clean Architecture
+
+#### Controller
+
+```csharp
+[HttpPost]
+public async Task<IActionResult> Create(
+    CreateOrderRequest request)
+{
+    var result = await _service.CreateAsync(request);
+
+    return Ok(result);
+}
+```
+
+#### Application
+
+```csharp
+public class CreateOrderService
+{
+    private readonly IOrderRepository _repository;
+
+    public CreateOrderService(
+        IOrderRepository repository)
+    {
+        _repository = repository;
+    }
+
+    public async Task<Guid> CreateAsync(
+        CreateOrderRequest request)
+    {
+        var order = new Order(
+            request.ProductId,
+            request.Quantity);
+
+        await _repository.AddAsync(order);
+
+        return order.Id;
+    }
+}
+```
+
+#### Domain
+
+```csharp
+public class Order
+{
+    public Guid Id { get; private set; }
+
+    public int Quantity { get; private set; }
+
+    public Order(Guid productId, int quantity)
+    {
+        if (quantity <= 0)
+            throw new DomainException(
+                "Quantity must be greater than zero");
+
+        Quantity = quantity;
+    }
+}
+```
+
+#### Infrastructure
+
+```csharp
+public class OrderRepository : IOrderRepository
+{
+    private readonly AppDbContext _context;
+
+    public OrderRepository(AppDbContext context)
+    {
+        _context = context;
+    }
+
+    public async Task AddAsync(Order order)
+    {
+        _context.Orders.Add(order);
+
+        await _context.SaveChangesAsync();
+    }
+}
+```
+
+Each layer now has **one clear responsibility**.
+
+---
+
+#### 🧪 Why is Clean Architecture easier to test?
+
+Suppose:
+
+```csharp
+public class OrderService
+{
+    private readonly IOrderRepository _repository;
+}
+```
+
+During unit testing:
+
+```csharp
+var repository = new Mock<IOrderRepository>();
+
+var service =
+    new OrderService(repository.Object);
+```
+
+We don't need:
+
+```text
+❌ SQL Server
+❌ Database connection
+❌ EF Core database
+❌ External API
+```
+
+Instead:
+
+```text
+Business Logic
+      ↓
+Interface
+      ↓
+Mock
+```
+
+Therefore, business logic becomes much easier to **unit test**.
+
+---
+
+#### 🔁 Clean Architecture vs 3-Tier Architecture
+
+This is a **very common interview question**.
+
+#### Traditional 3-Tier
+
+```text
+Presentation
+     ↓
+Business Logic
+     ↓
+Data Access
+     ↓
+Database
+```
+
+Usually:
+
+```text
+Controller
+   ↓
+Service
+   ↓
+Repository
+   ↓
+Database
+```
+
+#### Clean Architecture
+
+```text
+        Presentation
+             ↓
+        Application
+             ↓
+           Domain
+             ▲
+             │
+       Infrastructure
+```
+
+#### Main Difference
+
+> **Clean Architecture makes the business/domain logic independent of infrastructure such as databases and frameworks.**
+
+---
+
+#### 🔥 Clean Architecture + SOLID
+
+Clean Architecture and SOLID work together.
+
+| Clean Architecture Concept | SOLID Principle |
+|---|---|
+| Separate responsibilities | **SRP** |
+| Extend without changing core logic | **OCP** |
+| Proper abstractions | **LSP** |
+| Small focused interfaces | **ISP** |
+| Depend on abstractions | **DIP** |
+
+Especially:
+
+> **Dependency Inversion Principle (DIP) is one of the key principles behind Clean Architecture.**
+
+---
+
+#### 🔁 Quick Reference Card
+
+| Layer | Responsibility | Example |
+|---|---|---|
+| **Domain** | Core business rules | `Order`, `Customer` |
+| **Application** | Use cases / orchestration | `CreateOrderService` |
+| **Infrastructure** | Technical implementations | EF Core, SQL, Redis |
+| **Presentation** | HTTP/API | Controllers |
+
+---
+
+#### 🔁 Which Layer Does What?
+
+| Problem / Responsibility | Layer |
+|---|---|
+| Business rules | Domain |
+| Entities | Domain |
+| Use cases | Application |
+| DTOs | Application |
+| Repository interfaces | Application/Domain* |
+| EF Core implementation | Infrastructure |
+| SQL connection | Infrastructure |
+| External API implementation | Infrastructure |
+| HTTP endpoints | Presentation |
+| Controllers | Presentation |
+| Middleware | Presentation |
+
+> *Exact placement of repository interfaces can vary by Clean Architecture style. The important rule is that the abstraction belongs to the inner layer that needs it, while the implementation stays in Infrastructure.*
+
+---
+
+#### 🎯 Interview Answer — Short Version
+
+If interviewer asks:
+
+#### "What is Clean Architecture?"
+
+You can answer:
+
+> **Clean Architecture is an architectural pattern that separates an application into Presentation, Application, Domain, and Infrastructure layers. The main principle is that dependencies should point toward the core business logic. Domain and Application should not depend directly on databases, frameworks, or external services. Instead, we use abstractions such as interfaces and dependency injection. This makes the application loosely coupled, testable, maintainable, and easier to change.**
+
+#### If they ask for an example:
+
+> **For example, instead of my OrderService directly depending on Entity Framework, I define an IOrderRepository abstraction and let the Infrastructure layer implement it using EF Core. This allows me to change the database implementation or mock the repository during unit testing without changing the business logic.**
+
+---
+
+#### 🧠 Memory Tip
+
+> **P-A-D-I**
+
+**P**resentation → API / Controllers
+
+**A**pplication → Use Cases
+
+**D**omain → Business Rules
+
+**I**nfrastructure → Database / External Services
+
+And remember the golden rule:
+
+> 🔥 **Business logic should not depend on the database or framework.**
+
+#### One-Line Interview Memory
+
+> **Clean Architecture = Separate business logic from technical details using layers and abstractions.**
